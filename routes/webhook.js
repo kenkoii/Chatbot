@@ -72,6 +72,7 @@ function receivedMessage(event) {
         break;
 
       default:
+        console.log("Default message");
         sendTextMessage(senderID, messageText);
     }
   } else if (messageAttachments) {
@@ -164,7 +165,6 @@ function callSendAPI(messageData) {
     qs: { access_token: PAGE_ACCESS_TOKEN },
     method: 'POST',
     json: messageData
-
   }, function (error, response, body) {
     if (!error && response.statusCode == 200) {
       var recipientId = body.recipient_id;
