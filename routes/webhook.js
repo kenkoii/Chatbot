@@ -55,7 +55,8 @@ function receivedMessage(event) {
 
   var messageId = message.mid;
 
-  var messageText = message.text;
+  // var messageText = message.text;
+  var messageText = 'generic';
   var messageAttachments = message.attachments;
 
   if (messageText) {
@@ -69,6 +70,7 @@ function receivedMessage(event) {
         break;
 
       default:
+        console.log('Message is:', messageText);
         sendTextMessage(senderID, messageText);
     }
   } else if (messageAttachments) {
