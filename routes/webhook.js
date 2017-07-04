@@ -13,7 +13,7 @@ router.get('/', function(req, res, next) {
 });
 
 // All callbacks for Messenger will be POST-ed here
-router.post("/webhook", function (req, res) {
+router.post("/", function (req, res) {
   // Make sure this is a page subscription
   if (req.body.object == "page") {
     // Iterate over each entry
