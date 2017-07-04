@@ -55,8 +55,8 @@ function receivedMessage(event) {
 
   var messageId = message.mid;
 
-  // var messageText = message.text;
-  var messageText = 'generic';
+  var messageText = message.text;
+  // var messageText = 'generic';
   var messageAttachments = message.attachments;
 
   if (messageText) {
