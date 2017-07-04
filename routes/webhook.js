@@ -161,7 +161,7 @@ function sendGenericMessage(recipientId) {
 
 function callSendAPI(messageData) {
   console.log("callSendAPI: ", messageData);
-  request({
+  express.request({
     uri: 'https://graph.facebook.com/v2.6/me/messages',
     qs: { access_token: PAGE_ACCESS_TOKEN },
     method: 'POST',

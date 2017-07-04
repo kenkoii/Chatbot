@@ -14,7 +14,7 @@
     "pug": "~2.0.0-beta11",
     "serve-favicon": "~2.4.2"
   },
-  "engines":{
+  "engines": {
     "node": "6.9.4"
   }
 }
