@@ -89,7 +89,7 @@ function sendTextMessage(recipientId, messageText) {
       text: messageText
     }
   };
-
+  console.log("sendTextMessage: ", messageData);
   callSendAPI(messageData);
 }
 
@@ -160,12 +160,16 @@ function sendGenericMessage(recipientId) {
 }
 
 function callSendAPI(messageData) {
+  console.log("callSendAPI: ", messageData);
   request({
     uri: 'https://graph.facebook.com/v2.6/me/messages',
     qs: { access_token: PAGE_ACCESS_TOKEN },
     method: 'POST',
     json: messageData
   }, function (error, response, body) {
+    console.log("response: ", response);
+    console.log("body: ", body);
+    console.log("error: ", error);
     if (!error && response.statusCode == 200) {
       var recipientId = body.recipient_id;
       var messageId = body.message_id;
