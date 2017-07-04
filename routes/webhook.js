@@ -20,6 +20,7 @@ router.post("/webhook", function (req, res) {
     // There may be multiple entries if batched
     req.body.entry.forEach(function(entry) {
       // Iterate over each messaging event
+      console.log("Inside");
       entry.messaging.forEach(function(event) {
         if (event.postback) {
           processPostback(event);
