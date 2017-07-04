@@ -156,3 +156,6 @@ function callSendAPI(messageData) {
     }
   });  
 }
+
+
+module.exports = router;
