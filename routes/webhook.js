@@ -64,6 +64,7 @@ function receivedMessage(event) {
     // and send back the example. Otherwise, just echo the text we received.
     switch (messageText) {
       case 'generic':
+        console.log('Message is:', messageText);
         sendGenericMessage(senderID);
         break;
 
