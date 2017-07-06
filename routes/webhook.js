@@ -1,9 +1,13 @@
 var express = require('express');
 var router = express.Router();
+var request = require('request');
+
+const VERIFICATION_TOKEN = "toykents_shopcast";
+const PAGE_ACCESS_TOKEN = "EAAD8qRUJrBABANZBOT77hvWhimiKnNJFU01z1lian5rtFbb8fY45UAUVpNXhHG3S1ZB1T3Sy6apVxxLql5e10qUZBZATysAem5sTqrQZCOPtr1qtmHS2Ida16oOAjOpk1ZAKQe4APjDPV05Ag78WJMSZC4S8Ftkot1h8CgzqCZBJ3wZDZD";
 
 /* webhook start */
 router.get('/', function(req, res, next) {
-  if (req.query["hub.verify_token"] === process.env.VERIFICATION_TOKEN) {
+  if (req.query["hub.verify_token"] === VERIFICATION_TOKEN) {
     console.log("Verified webhook");
     res.status(200).send(req.query["hub.challenge"]);
   } else {
@@ -163,7 +167,7 @@ function callSendAPI(messageData) {
   console.log("callSendAPI: ", messageData);
   request({
     uri: 'https://graph.facebook.com/v2.6/me/messages',
-    qs: { access_token: process.env.PAGE_ACCESS_TOKEN },
+    qs: { access_token: PAGE_ACCESS_TOKEN },
     method: 'POST',
     json: messageData
   }, function (error, response, body) {
