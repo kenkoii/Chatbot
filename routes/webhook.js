@@ -31,9 +31,13 @@ router.post('/', function (req, res) {
       // Iterate over each messaging event
       entry.messaging.forEach(function(event) {
         if (event.message) {
-          receivedMessage(event);
+          if (event.message.quick_reply) {
+            receivedPayloadEvent(event);
+          } else {
+            receivedMessageEvent(event);
+          }
         } else if (event.postback) {
-          receivedPostback(event);     
+          receivedPostbackEvent(event);     
         } else {
           console.log("Webhook received unknown event: ", event);
         }
@@ -49,8 +53,40 @@ router.post('/', function (req, res) {
   }
 });
 
+function receivedPayloadEvent(event) {
+  var senderID = event.sender.id;
+  var recipientID = event.recipient.id;
+  var timeOfMessage = event.timestamp;
+  var message = event.message.text;
 
-function receivedMessage(event) {
+  console.log(JSON.stringify(event));
+  console.log("Received payload for user %d and page %d at %d with message:", 
+    senderID, recipientID, timeOfMessage);
+  console.log(JSON.stringify(message));
+
+  var messageId = message.mid;
+
+  var messageText = message;
+  if (messageText) {
+    switch (messageText) {
+      case 'Promos':
+        sendLocationButton(senderID);
+        break;
+      case 'Events':
+        sendLocationButton(senderID);
+    }
+  } else if (messageAttachments) {
+    // if(messageAttachments[0].payload.coordinates)
+    console.log("Message Attachments:", messageAttachments[0].payload.coordinates);
+    if(messageAttachments[0].type == 'location') {
+      sendPromoMessage(senderID, messageAttachments[0].payload.coordinates);
+    }
+    //sendTextMessage(senderID, "Message with attachment received");
+  }
+}
+
+
+function receivedMessageEvent(event) {
   var senderID = event.sender.id;
   var recipientID = event.recipient.id;
   var timeOfMessage = event.timestamp;
@@ -72,16 +108,99 @@ function receivedMessage(event) {
     // and send back the example. Otherwise, just echo the text we received.
     switch (messageText) {
       case 'generic':
-        sendGenericMessage(senderID);
+        sendLocationButton(senderID);
         break;
-
       default:
         console.log("Default message");
-        sendTextMessage(senderID, messageText);
+        if (messageText.indexOf('location') !== -1) {
+          sendLocationButton(senderID);
+        } else {
+          sendTextMessage(senderID, messageText);
+        }
     }
   } else if (messageAttachments) {
-    sendTextMessage(senderID, "Message with attachment received");
+    // if(messageAttachments[0].payload.coordinates)
+    console.log("Message Attachments:", messageAttachments[0].payload.coordinates);
+    if(messageAttachments[0].type == 'location') {
+      sendPromoMessage(senderID, messageAttachments[0].payload.coordinates);
+    }
+    //sendTextMessage(senderID, "Message with attachment received");
   }
+}
+
+function sendGreeting() {
+    var data = {
+        setting_type: "greeting",
+        greeting: {
+            text: "Hi {{user_first_name}}, find out what’s on sale, and discover lifestyle events nearby!"
+        }
+    };
+
+    request({
+        uri: 'https://graph.facebook.com/v2.6/me/thread_settings',
+        qs: {
+            access_token: PAGE_ACCESS_TOKEN
+        },
+        method: 'POST',
+        json: data
+
+    }, function(error, response, body) {
+        if (!error && response.statusCode == 200) {
+            var recipientId = body.recipient_id;
+            var messageId = body.message_id;
+
+            console.log("Successfully sent greeting message to", recipientId);
+        } else {
+            console.error("Unable to send message.");
+            // console.error(response);
+            console.error(error);
+        }
+    });
+}
+
+sendGreeting();
+
+function sendLocationButton(recipientId) {
+  var messageData = {
+    recipient: {
+      id: recipientId
+    },
+    message: {
+      text: "Please share your location:",
+      quick_replies:[
+        {
+          content_type:"location",
+        }
+      ]
+    }
+  };
+  console.log("sendLocationButton: ", messageData);
+  callSendAPI(messageData);
+}
+
+function sendChoiceButton(recipientId) {
+  var messageData = {
+    recipient: {
+      id: recipientId
+    },
+    message: {
+      text: "What do you want to know?",
+      quick_replies:[
+        {
+          "content_type":"text",
+          "title":"Promos",
+          "payload":"Promos"
+        },
+        {
+          "content_type":"text",
+          "title":"Events",
+          "payload":"Events"
+        }
+      ]
+    }
+  };
+  console.log("sendChoiceButton: ", messageData);
+  callSendAPI(messageData);
 }
 
 function sendTextMessage(recipientId, messageText) {
@@ -99,7 +218,7 @@ function sendTextMessage(recipientId, messageText) {
 
 
 
-function receivedPostback(event) {
+function receivedPostbackEvent(event) {
   var senderID = event.sender.id;
   var recipientID = event.recipient.id;
   var timeOfPostback = event.timestamp;
@@ -110,11 +229,150 @@ function receivedPostback(event) {
 
   console.log("Received postback for user %d and page %d with payload '%s' " + 
     "at %d", senderID, recipientID, payload, timeOfPostback);
-
-  // When a postback is called, we'll send a message back to the sender to 
-  // let them know it was successful
-  sendTextMessage(senderID, "Postback called");
+  
+  switch(payload) {
+    case 'GET_STARTED_PAYLOAD': 
+      sendChoiceButton(senderID);
+      break;
+    default: 
+      // When a postback is called, we'll send a message back to the sender to 
+      // let them know it was successful
+      sendTextMessage(senderID, "Postback called");
+  }
+  
 }
+
+function sendPromoMessage(recipientId, coordinates) {
+  const lat = coordinates.lat;
+  const long = coordinates.long
+  request({
+    uri: 'https://api.shopcast.ph/v2/posts',
+    qs: { group_offers: true,
+          lat: lat,
+          lng: long,
+          merchant_photo: true,
+          page: 1,
+          pagesize: 100,
+          radius: 99
+         },
+    method: 'GET'
+  }, function (error, response, body) {
+    console.log("response: ", response);
+    // console.log("body: ", body);
+    console.log("error: ", error);
+    const posts = JSON.parse(body);
+    const elements = [];
+    for(var i = 0; i < 4; i++) {
+      elements.push({
+        title: posts[i].title,
+        subtitle: posts[i].summary,
+        item_url: "http://shopcast.ph/map/post/" + posts[i].offer_id,           
+        image_url: "https://s3-ap-southeast-1.amazonaws.com/shopcastbucket/post/photo/" + posts[i].photo_file,
+        buttons: [{
+          type: "web_url",
+          url: "https://www.oculus.com/en-us/rift/",
+          title: "Open Web URL"
+        }]
+      });
+    }
+
+    var messageData = {
+      recipient: {
+        id: recipientId
+      },
+      message: {
+        attachment: {
+          type: "template",
+          payload: {
+            template_type: "list",
+            elements: elements
+          }
+        }
+      }
+    };  
+
+    callSendAPI(messageData);
+  }); 
+}
+
+function sendEventsMessage(recipientId, coordinates) {
+  const lat = coordinates.lat;
+  const long = coordinates.long
+  request({
+    uri: 'https://api.shopcast.ph/v2/events',
+    qs: { group_offers: true,
+          lat: lat,
+          lng: long,
+          merchant_photo: true,
+          page: 1,
+          pagesize: 100,
+          radius: 99
+         },
+    method: 'GET'
+  }, function (error, response, body) {
+    console.log("response: ", response);
+    // console.log("body: ", body);
+    console.log("error: ", error);
+    const posts = JSON.parse(body);
+    const elements = [];
+    for(var i = 0; i < 4; i++) {
+      elements.push({
+        title: posts[i].title,
+        subtitle: posts[i].summary,
+        item_url: "http://shopcast.ph/map/post/" + posts[i].offer_id,           
+        image_url: "https://s3-ap-southeast-1.amazonaws.com/shopcastbucket/post/photo/" + posts[i].photo_file,
+        buttons: [{
+          type: "web_url",
+          url: "https://www.oculus.com/en-us/rift/",
+          title: "Open Web URL"
+        }]
+      });
+    }
+
+    var messageData = {
+      recipient: {
+        id: recipientId
+      },
+      message: {
+        attachment: {
+          type: "template",
+          payload: {
+            template_type: "list",
+            elements: elements
+          }
+        }
+      }
+    };  
+
+    callSendAPI(messageData);
+  }); 
+}
+
+function callSendAPI(messageData) {
+  console.log("callSendAPI: ", messageData);
+  request({
+    uri: 'https://graph.facebook.com/v2.6/me/messages',
+    qs: { access_token: PAGE_ACCESS_TOKEN },
+    method: 'POST',
+    json: messageData
+  }, function (error, response, body) {
+    console.log("response: ", response);
+    console.log("body: ", body);
+    console.log("error: ", error);
+    if (!error && response.statusCode == 200) {
+      var recipientId = body.recipient_id;
+      var messageId = body.message_id;
+
+      console.log("Successfully sent generic message with id %s to recipient %s", 
+        messageId, recipientId);
+    } else {
+      console.error("Unable to send message.");
+      console.error(response);
+      console.error(error);
+    }
+  });  
+}
+
 
 function sendGenericMessage(recipientId) {
   var messageData = {
@@ -159,33 +417,7 @@ function sendGenericMessage(recipientId) {
       }
     }
   };  
-
   callSendAPI(messageData);
-}
-
-function callSendAPI(messageData) {
-  console.log("callSendAPI: ", messageData);
-  request({
-    uri: 'https://graph.facebook.com/v2.6/me/messages',
-    qs: { access_token: PAGE_ACCESS_TOKEN },
-    method: 'POST',
-    json: messageData
-  }, function (error, response, body) {
-    console.log("response: ", response);
-    console.log("body: ", body);
-    console.log("error: ", error);
-    if (!error && response.statusCode == 200) {
-      var recipientId = body.recipient_id;
-      var messageId = body.message_id;
-
-      console.log("Successfully sent generic message with id %s to recipient %s", 
-        messageId, recipientId);
-    } else {
-      console.error("Unable to send message.");
-      console.error(response);
-      console.error(error);
-    }
-  });  
 }
 
 module.exports = router;
